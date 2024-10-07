@@ -23,7 +23,8 @@ describe("chit_fund_platform", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.ChitFundPlatform as Program<ChitFundPlatform>;
+  const program = anchor.workspace
+    .ChitFundPlatform as Program<ChitFundPlatform>;
 
   const walletKeypair = (provider.wallet as anchor.Wallet).payer;
 
@@ -33,7 +34,9 @@ describe("chit_fund_platform", () => {
     decimals: number = 6
   ): Promise<PublicKey> {
     const mint = Keypair.generate();
-    const lamports = await getMinimumBalanceForRentExemptMint(provider.connection);
+    const lamports = await getMinimumBalanceForRentExemptMint(
+      provider.connection
+    );
 
     const transaction = new Transaction().add(
       SystemProgram.createAccount({
@@ -43,7 +46,12 @@ describe("chit_fund_platform", () => {
         lamports,
         programId: TOKEN_PROGRAM_ID,
       }),
-      createInitializeMintInstruction(mint.publicKey, decimals, mintAuthority, null)
+      createInitializeMintInstruction(
+        mint.publicKey,
+        decimals,
+        mintAuthority,
+        null
+      )
     );
 
     await provider.sendAndConfirm(transaction, [mint, payer]);
@@ -69,7 +77,14 @@ describe("chit_fund_platform", () => {
     amount: number,
     authority: Keypair
   ): Promise<void> {
-    await mintTo(provider.connection, authority, mint, destination, authority.publicKey, amount);
+    await mintTo(
+      provider.connection,
+      authority,
+      mint,
+      destination,
+      authority.publicKey,
+      amount
+    );
   }
 
   let chitFundPDA: PublicKey;
@@ -95,16 +110,22 @@ describe("chit_fund_platform", () => {
     user2 = Keypair.generate();
 
     // Airdrop SOL to users and wait for confirmation
-    const airdropPromises = [user1, user2, walletKeypair].map(async (keypair) => {
-      const signature = await provider.connection.requestAirdrop(
-        keypair.publicKey,
-        10 * LAMPORTS_PER_SOL
-      );
-      return provider.connection.confirmTransaction(signature);
-    });
+    const airdropPromises = [user1, user2, walletKeypair].map(
+      async (keypair) => {
+        const signature = await provider.connection.requestAirdrop(
+          keypair.publicKey,
+          10 * LAMPORTS_PER_SOL
+        );
+        return provider.connection.confirmTransaction(signature);
+      }
+    );
     await Promise.all(airdropPromises);
 
-    contributionMint = await createMint(walletKeypair, walletKeypair.publicKey, 6);
+    contributionMint = await createMint(
+      walletKeypair,
+      walletKeypair.publicKey,
+      6
+    );
 
     [chitFundPDA, chitFundBump] = await PublicKey.findProgramAddress(
       [Buffer.from("chit_fund"), walletKeypair.publicKey.toBuffer()],
@@ -119,16 +140,48 @@ describe("chit_fund_platform", () => {
       true
     ).then((account) => account.address);
 
-    user1ContributionAccount = await createTokenAccount(contributionMint, user1.publicKey);
-    user2ContributionAccount = await createTokenAccount(contributionMint, user2.publicKey);
-    user1CollateralAccount = await createTokenAccount(contributionMint, user1.publicKey);
-    user2CollateralAccount = await createTokenAccount(contributionMint, user2.publicKey);
+    user1ContributionAccount = await createTokenAccount(
+      contributionMint,
+      user1.publicKey
+    );
+    user2ContributionAccount = await createTokenAccount(
+      contributionMint,
+      user2.publicKey
+    );
+    user1CollateralAccount = await createTokenAccount(
+      contributionMint,
+      user1.publicKey
+    );
+    user2CollateralAccount = await createTokenAccount(
+      contributionMint,
+      user2.publicKey
+    );
 
     // Mint enough tokens for all cycles and collateral
-    await mintTokens(contributionMint, user1ContributionAccount, CONTRIBUTION_AMOUNT * TOTAL_CYCLES, walletKeypair);
-    await mintTokens(contributionMint, user2ContributionAccount, CONTRIBUTION_AMOUNT * TOTAL_CYCLES, walletKeypair);
-    await mintTokens(contributionMint, user1CollateralAccount, COLLATERAL_AMOUNT, walletKeypair);
-    await mintTokens(contributionMint, user2CollateralAccount, COLLATERAL_AMOUNT, walletKeypair);
+    await mintTokens(
+      contributionMint,
+      user1ContributionAccount,
+      CONTRIBUTION_AMOUNT * TOTAL_CYCLES,
+      walletKeypair
+    );
+    await mintTokens(
+      contributionMint,
+      user2ContributionAccount,
+      CONTRIBUTION_AMOUNT * TOTAL_CYCLES,
+      walletKeypair
+    );
+    await mintTokens(
+      contributionMint,
+      user1CollateralAccount,
+      COLLATERAL_AMOUNT,
+      walletKeypair
+    );
+    await mintTokens(
+      contributionMint,
+      user2CollateralAccount,
+      COLLATERAL_AMOUNT,
+      walletKeypair
+    );
 
     await program.methods
       .initializeChitFund(
@@ -137,7 +190,7 @@ describe("chit_fund_platform", () => {
         new anchor.BN(TOTAL_CYCLES),
         new anchor.BN(COLLATERAL_AMOUNT),
         MAX_PARTICIPANTS,
-        DISBURSEMENT_SCHEDULE.map(amount => new anchor.BN(amount))
+        DISBURSEMENT_SCHEDULE.map((amount) => new anchor.BN(amount))
       )
       .accounts({
         chitFund: chitFundPDA,
@@ -153,8 +206,12 @@ describe("chit_fund_platform", () => {
   it("Initializes a new Chit Fund", async () => {
     const chitFundAccount = await program.account.chitFund.fetch(chitFundPDA);
     expect(chitFundAccount.isActive).to.be.true;
-    expect(chitFundAccount.collateralRequirement.toNumber()).to.equal(COLLATERAL_AMOUNT);
-    expect(chitFundAccount.contributionAmount.toNumber()).to.equal(CONTRIBUTION_AMOUNT);
+    expect(chitFundAccount.collateralRequirement.toNumber()).to.equal(
+      COLLATERAL_AMOUNT
+    );
+    expect(chitFundAccount.contributionAmount.toNumber()).to.equal(
+      CONTRIBUTION_AMOUNT
+    );
     expect(chitFundAccount.cycleDuration.toNumber()).to.equal(CYCLE_DURATION);
     expect(chitFundAccount.totalCycles.toNumber()).to.equal(TOTAL_CYCLES);
     expect(chitFundAccount.maxParticipants).to.equal(MAX_PARTICIPANTS);
@@ -165,7 +222,11 @@ describe("chit_fund_platform", () => {
 
   it("User1 joins the Chit Fund", async () => {
     const [participantPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("participant"), chitFundPDA.toBuffer(), user1.publicKey.toBuffer()],
+      [
+        Buffer.from("participant"),
+        chitFundPDA.toBuffer(),
+        user1.publicKey.toBuffer(),
+      ],
       program.programId
     );
 
@@ -185,12 +246,18 @@ describe("chit_fund_platform", () => {
 
     const chitFundAccount = await program.account.chitFund.fetch(chitFundPDA);
     expect(chitFundAccount.participants).to.have.lengthOf(1);
-    expect(chitFundAccount.participants[0].toBase58()).to.equal(user1.publicKey.toBase58());
+    expect(chitFundAccount.participants[0].toBase58()).to.equal(
+      user1.publicKey.toBase58()
+    );
   });
 
   it("User1 makes a contribution", async () => {
     const [participantPDA] = await PublicKey.findProgramAddress(
-      [Buffer.from("participant"), chitFundPDA.toBuffer(), user1.publicKey.toBuffer()],
+      [
+        Buffer.from("participant"),
+        chitFundPDA.toBuffer(),
+        user1.publicKey.toBuffer(),
+      ],
       program.programId
     );
 
@@ -207,7 +274,9 @@ describe("chit_fund_platform", () => {
       .signers([user1])
       .rpc();
 
-    const participantAccount = await program.account.participant.fetch(participantPDA);
+    const participantAccount = await program.account.participant.fetch(
+      participantPDA
+    );
     expect(participantAccount.contributions[0]).to.be.true;
   });
 });
